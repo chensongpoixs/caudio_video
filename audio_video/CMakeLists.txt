@@ -49,16 +49,21 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMakeModules/)
 
+#SET（LIBYUV_INCLUDE  "D:/Work/cmedia_server/webrtc_google/src/third_party/libyuv/include"）
+#SET（LIBYUV_LIB "D:\Work\cmedia_server\webrtc_google\src\out\test_vs2017_debug\win_clang_x64\obj\third_party\libyuv"）
 
 FIND_PACKAGE(FFmpeg)
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/video
 					${CMAKE_CURRENT_BINARY_DIR}	
 					${FFMPEG_LIBAVDEVICE_INCLUDE_DIRS}
+					D:/Work/cmedia_server/webrtc_google/src/third_party/libyuv/include
+					
 )	
 
 
 add_subdirectory(video)
+add_subdirectory(H264)
 
 
 

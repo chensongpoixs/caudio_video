@@ -19,7 +19,7 @@ extern "C"
 }
 
 #include <libyuv.h>
- AVFormatContext * open_dev()
+AVFormatContext * open_dev()
 {
 	int ret = 0;
 	char errors[1024] = {0};
@@ -31,14 +31,14 @@ extern "C"
 	char *devicename = "desktop";
 
 	avdevice_register_all();
-	
+
 
 	AVInputFormat * iformat = av_find_input_format("gdigrab");
 
 
 	av_dict_set(&options, "video_size", "1920X1080", 0);
 	av_dict_set(&options, "framerate", "30", 0);
-	av_dict_set(&options, "pixel_formt", "nv12", 0);
+	av_dict_set(&options, "pixel_formt", "rgb", 0);
 	//AV_PIX_FMT_BGR24
 
 	if ((ret = avformat_open_input(&fmt_ctx, devicename, iformat, &options)) < 0)
@@ -71,33 +71,33 @@ int main(int argc, char *argv[])
 	int32_t height = 1080;
 
 
-	 
 
-	
-	 
+
+
+
 
 
 	unsigned char * yuv_ptr = static_cast<unsigned char *>(std::malloc(sizeof(unsigned char) *(1920 * 1080 *2)));
 	while ((ret = av_read_frame(fmt_ctx, &pkt)) == 0)
 	{
 		av_log(NULL, AV_LOG_INFO, "packet size is %d(%p)\n", pkt.size, pkt.data);
-		
+
 
 		/*libyuv::ConvertToI420(pkt.data, 0, yuv_ptr, width, yuv_ptr + (width *height),
-			(width + 1) / 2, yuv_ptr + (width *height ) + ((width >> 1) *(height >> 1)),
-			(width + 1) / 2, 0, 0, 1920, 1080, 1920,
-			1080, libyuv::kRotate0, libyuv::FOURCC_ARGB);*/
+		(width + 1) / 2, yuv_ptr + (width *height ) + ((width >> 1) *(height >> 1)),
+		(width + 1) / 2, 0, 0, 1920, 1080, 1920,
+		1080, libyuv::kRotate0, libyuv::FOURCC_ARGB);*/
 
 		// width * height * 4; // rgba  -> a -> 透明度 
 
 
 
 		//AV_PIX_FMT_RGBA
-		fwrite(pkt.data, 1, 1920 * 1080  * 4, out_file_ptr);
+		fwrite(pkt.data, 1, 1920 * 1080  * 3, out_file_ptr);
 		::fflush(out_file_ptr);
 		av_packet_unref(&pkt);
 	}
-	
+
 	fclose(out_file_ptr);
 	return EXIT_SUCCESS;
 }
