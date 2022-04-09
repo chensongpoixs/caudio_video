@@ -1,4 +1,4 @@
-﻿PROJECT(cvideo)
+﻿PROJECT(ch264)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.14.2)
 MESSAGE(STATUS "#########################")
 MESSAGE(STATUS "${PROJECT_NAME}")
@@ -19,7 +19,7 @@ set(ALL_LIB
         ${FFMPEG_LIBPOSTPROC_LIBRARIES}
         ${FFMPEG_LIBSWRESAMPLE_LIBRARIES}
         ${FFMPEG_LIBSWSCALE_LIBRARIES}
-		D:/Work/cmedia_server/webrtc_google/src/out/test_vs2017_debug/win_clang_x64/obj/third_party/libyuv/libyuv_internal.lib
+		#D:/Work/cmedia_server/webrtc_google/src/out/test_vs2017_debug/win_clang_x64/obj/third_party/libyuv/libyuv_internal.lib
 		#D:/Work/cmedia_server/webrtc_google/src/out/test_vs2017_debug/obj/third_party/libjpeg_turbo/libjpeg.lib
 		#D:/Work/cmedia_server/webrtc_google/src/out/test_vs2017_debug/obj/third_party/libjpeg_turbo/simd.lib
 		#D:/Work/cmedia_server/webrtc_google/src/out/test_vs2017_debug/obj/third_party/libjpeg_turbo/simd_asm.lib

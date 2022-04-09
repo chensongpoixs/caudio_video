@@ -123,4 +123,9 @@ Elecard Stream Eye
 
 CodecVisa
 
+40 * 16 = 640
+
+
+
+
 
