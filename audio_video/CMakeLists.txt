@@ -59,6 +59,7 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/video
 
 
 add_subdirectory(video)
+add_subdirectory(bm_vpn_video)
 
 
 
