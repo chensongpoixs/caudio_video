@@ -11,11 +11,14 @@ purpose:		nv_encode
 //#include <util/threading.h>
 //#include <util/dstr.h>
 #include "cnv_encode.h"
-#include <thread>
-#include <mutex>
+#include "cnv_encode_helpers.h"
+//#include <thread>
+//#include <mutex>
 static void *nvenc_lib = NULL;
 //static pthread_mutex_t init_mutex = PTHREAD_MUTEX_INITIALIZER;
-static std::mutex		init_mutex;
+//static std::mutex		init_mutex;
+
+static CRITICAL_SECTION   init_mutex;// crit_section_;
 NV_ENCODE_API_FUNCTION_LIST nv = {NV_ENCODE_API_FUNCTION_LIST_VER};
 NV_CREATE_INSTANCE_FUNC nv_create_instance = NULL;
 
@@ -135,8 +138,13 @@ static inline bool init_nvenc_internal()
 	{
 		return success;
 	}
-	initialized = true;
-
+	 
+	initialized = load_nvenc_lib();
+	if (!initialized)
+	{
+		WARNING_EX_LOG("nvEncodeAPI load failed !!!");
+		return false;
+	}
 	NV_MAX_VER_FUNC nv_max_ver = (NV_MAX_VER_FUNC)load_nv_func("NvEncodeAPIGetMaxSupportedVersion");
 	if (!nv_max_ver) 
 	{
@@ -159,8 +167,7 @@ static inline bool init_nvenc_internal()
 		return false;
 	}
 
-	nv_create_instance = (NV_CREATE_INSTANCE_FUNC)load_nv_func(
-		"NvEncodeAPICreateInstance");
+	nv_create_instance = (NV_CREATE_INSTANCE_FUNC)load_nv_func( "NvEncodeAPICreateInstance");
 	if (!nv_create_instance) {
 		error(  "Missing NvEncodeAPICreateInstance, check "
 				 "your video card drivers are up to date.");
@@ -177,17 +184,18 @@ static inline bool init_nvenc_internal()
 
 bool init_nvenc( )
 {
-	std::lock_guard<std::mutex> lock(init_mutex);
+	//std::lock_guard<std::mutex> lock(init_mutex);
 	bool success;
-
+	//EnterCriticalSection(&init_mutex);
 	//pthread_mutex_lock(&init_mutex);
 	success = init_nvenc_internal(/*encoder*/);
 	//pthread_mutex_unlock(&init_mutex);
+	//LeaveCriticalSection(&init_mutex);
 
+	// ::DeleteCriticalSection(&init_mutex);
 	return success;
 }
 
-extern struct chen_encoder_info nvenc_info;
 
 void jim_nvenc_load(void)
 {

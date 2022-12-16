@@ -10,18 +10,44 @@ purpose:		nv_encode
 #define _C_NV_ENCODE_H
 
 #define WIN32_LEAN_AND_MEAN
+
 #include <windows.h>
 #include <stdbool.h>
  
 #include "nvEncodeAPI.h"
 
-typedef NVENCSTATUS(NVENCAPI *NV_CREATE_INSTANCE_FUNC)(NV_ENCODE_API_FUNCTION_LIST *);
+
+#ifdef __cplusplus
+extern "C" {
+#else
+#if defined(_MSC_VER) && !defined(inline)
+#define inline __inline
+#endif
+#endif
+ 
+
+void helloworld();
+
+
+  void *nvenc_create();
+void nvenc_destroy(void *data);
+bool nvenc_update(void *data, int bitrate);
+bool nvenc_encode_tex(void *data, uint32_t handle, int64_t pts,
+	uint64_t lock_key, uint64_t *next_key,
+	struct encoder_packet *packet,
+	bool *received_packet);
+//typedef NVENCSTATUS(NVENCAPI *NV_CREATE_INSTANCE_FUNC)(NV_ENCODE_API_FUNCTION_LIST *);
 
 extern const char *nv_error_name(NVENCSTATUS err);
-extern NV_ENCODE_API_FUNCTION_LIST nv;
-extern NV_CREATE_INSTANCE_FUNC nv_create_instance;
+//extern NV_ENCODE_API_FUNCTION_LIST nv;
+//extern NV_CREATE_INSTANCE_FUNC nv_create_instance;
 
+void LOG(const char* format, ...);
 
+#define WARNING_EX_LOG(format, ...)	LOG("[%s][%s][%d][warn]" format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
+#define DEBUG_EX_LOG(format, ...)   LOG("[%s][%s][%d][debug]" format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define ERROR_EX_LOG(format, ...)   LOG("[%s][%s][%d][error]" format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 /**
  * Encoder interface
@@ -114,7 +140,7 @@ struct  cencoder_info {
 	 * @param  settings  New settings for this encoder
 	 * @return           true if successful, false otherwise
 	 */
-	bool(*update)(void *data);
+	bool(*update)(void *data,   int bitrate);
 
 	/**
 	 * Returns extra data associated with this encoder (usually header)
@@ -184,8 +210,67 @@ struct  cencoder_info {
 		struct encoder_packet *packet,
 		bool *received_packet);
 };
+
+
+
+/** Encoder output packet */
+struct encoder_packet {
+	uint8_t *data; /**< Packet data */
+	size_t size;   /**< Packet size */
+
+	int64_t pts; /**< Presentation timestamp */
+	int64_t dts; /**< Decode timestamp */
+
+	int32_t timebase_num; /**< Timebase numerator */
+	int32_t timebase_den; /**< Timebase denominator */
+
+	//enum  encoder_type type; /**< Encoder type */
+
+	bool keyframe; /**< Is a keyframe */
+
+	/* ---------------------------------------------------------------- */
+	/* Internal video variables (will be parsed automatically) */
+
+	/* DTS in microseconds */
+	int64_t dts_usec;
+
+	/* System DTS in microseconds */
+	int64_t sys_dts_usec;
+
+	/**
+	 * Packet priority
+	 *
+	 * This is generally use by video encoders to specify the priority
+	 * of the packet.
+	 */
+	int priority;
+
+	/**
+	 * Dropped packet priority
+	 *
+	 * If this packet needs to be dropped, the next packet must be of this
+	 * priority or higher to continue transmission.
+	 */
+	int drop_priority;
+
+	/** Audio track index (used with outputs) */
+	size_t track_idx;
+
+	/** Encoder from which the track originated from */
+	//encoder_t *encoder;
+};
+
 //extern   bool init_nvenc();
 
   // bool nv_failed(  NVENCSTATUS err, const char *func, const char *call);
+
+ //extern struct cencoder_info nvenc_info;
+
+
+  bool init_nv_encode(struct cencoder_info *nvenc_info);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // !#define _C_ASYNC_LOG_H

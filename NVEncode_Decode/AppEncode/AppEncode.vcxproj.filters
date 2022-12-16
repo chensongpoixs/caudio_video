@@ -2,11 +2,16 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="cnv_encode_helpers.cpp" />
     <ClCompile Include="cnv_encode.c" />
+    <ClCompile Include="cavc.c" />
+    <ClCompile Include="cnv_encode_helpers.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="nvEncodeAPI.h" />
     <ClInclude Include="cnv_encode.h" />
+    <ClInclude Include="cnv_encode_helpers.h" />
+    <ClInclude Include="cavc.h" />
+    <ClInclude Include="darray.h" />
+    <ClInclude Include="circlebuf.h" />
   </ItemGroup>
 </Project>

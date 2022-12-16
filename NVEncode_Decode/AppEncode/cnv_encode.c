@@ -12,502 +12,107 @@ purpose:		nv_encode
 //#include <util/dstr.h>
 //#include <chen-avc.h>
 //#include <libavutil/rational.h>
+#define  _CRT_SECURE_NO_WARNINGS
 #include "cnv_encode.h"
+#include "cnv_encode_helpers.h"
+#include "circlebuf.h"
 #define INITGUID
 #include <dxgi.h>
 #include <d3d11.h>
 #include <d3d11_1.h>
 #include <stdint.h>
 #include <stdbool.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include "darray.h"
+#include "cavc.h"
 /* ========================================================================= */
+
+//static const std::string  g_nv_encode_file_name = "./nv_encode/";// +::time(NULL) + "_nv_encode.log";
+static const char * g_nv_encode_file_name = "./nv_encode/encode.log";
+static FILE* out_file_log_ptr = NULL;
+static inline void SHOW(const char* format, va_list args)
+{
+	if (!out_file_log_ptr)
+	{
+		out_file_log_ptr = fopen(g_nv_encode_file_name, "wb+");;;
+	}
+
+	if (!out_file_log_ptr)
+	{
+		return;
+	}
+
+	char message[10240] = { 0 };
+
+	int num = _vsprintf_p(message, 1024, format, args);
+	if (num > 0)
+	{
+		fprintf(out_file_log_ptr, "%s\n", message);
+		fflush(out_file_log_ptr);
+	}
+}
+void LOG(const char* format, ...)
+{
+	if (!out_file_log_ptr)
+	{
+		return;
+	}
+
+	va_list args;
+	va_start(args, format);
+
+	SHOW(format, args);
+	va_end(args);
+
+}
+
+
+
+ 
 
 
 
 #define EXTRA_BUFFERS 5
-void blog(int log_level, const char *format, ...) {}
-#define do_log(level, format, ...)           
+//void blog(int log_level, const char *format, ...) 
+//{
+//
+//}
+#define do_log  LOG       
 
-#define error(format, ...) do_log(LOG_ERROR, format, ##__VA_ARGS__)
-#define warn(format, ...) do_log(LOG_WARNING, format, ##__VA_ARGS__)
-#define info(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
-#define debug(format, ...) do_log(LOG_DEBUG, format, ##__VA_ARGS__)
+#define error(format, ...) do_log(/*LOG_ERROR, */format, ##__VA_ARGS__)
+#define warn(format, ...) do_log(/*LOG_WARNING, */format, ##__VA_ARGS__)
+#define info(format, ...) do_log(/*LOG_INFO,*/ format, ##__VA_ARGS__)
+#define debug(format, ...) do_log(/*LOG_DEBUG,*/ format, ##__VA_ARGS__)
 
 #define error_hr(msg) error("%s: %s: 0x%08lX", __FUNCTION__, msg, (uint32_t)hr);
 
 
-/*
- * Dynamic array.
- *
- * NOTE: Not type-safe when using directly.
- *       Specifying size per call with inline maximizes compiler optimizations
- *
- *       See DARRAY macro at the bottom of the file for slightly safer usage.
- */
-#define bmalloc  malloc
-#define bfree    free
 
-#define DARRAY_INVALID ((size_t)-1)
+static const char *astrblank = "";
+static const wchar_t *wstrblank = L"";
 
-struct darray {
-	void *array;
-	size_t num;
-	size_t capacity;
-};
 
-static inline void darray_init(struct darray *dst)
+int astrcmpi(const char *str1, const char *str2)
 {
-	dst->array = NULL;
-	dst->num = 0;
-	dst->capacity = 0;
+	if (!str1)
+		str1 = astrblank;
+	if (!str2)
+		str2 = astrblank;
+
+	do {
+		char ch1 = (char)toupper(*str1);
+		char ch2 = (char)toupper(*str2);
+
+		if (ch1 < ch2)
+			return -1;
+		else if (ch1 > ch2)
+			return 1;
+	} while (*str1++ && *str2++);
+
+	return 0;
 }
-
-static inline void darray_free(struct darray *dst)
-{
-	bfree(dst->array);
-	dst->array = NULL;
-	dst->num = 0;
-	dst->capacity = 0;
-}
-
-static inline size_t darray_alloc_size(const size_t element_size,
-	const struct darray *da)
-{
-	return element_size * da->num;
-}
-
-static inline void *darray_item(const size_t element_size,
-	const struct darray *da, size_t idx)
-{
-	return (void *)(((uint8_t *)da->array) + element_size * idx);
-}
-
-static inline void *darray_end(const size_t element_size,
-	const struct darray *da)
-{
-	if (!da->num)
-		return NULL;
-
-	return darray_item(element_size, da, da->num - 1);
-}
-
-static inline void darray_reserve(const size_t element_size, struct darray *dst,
-	const size_t capacity)
-{
-	void *ptr;
-	if (capacity == 0 || capacity <= dst->capacity)
-		return;
-
-	ptr = bmalloc(element_size * capacity);
-	if (dst->array) {
-		if (dst->num)
-			memcpy(ptr, dst->array, element_size * dst->num);
-
-		bfree(dst->array);
-	}
-	dst->array = ptr;
-	dst->capacity = capacity;
-}
-
-static inline void darray_ensure_capacity(const size_t element_size,
-	struct darray *dst,
-	const size_t new_size)
-{
-	size_t new_cap;
-	void *ptr;
-	if (new_size <= dst->capacity)
-		return;
-
-	new_cap = (!dst->capacity) ? new_size : dst->capacity * 2;
-	if (new_size > new_cap)
-		new_cap = new_size;
-	ptr = bmalloc(element_size * new_cap);
-	if (dst->array) {
-		if (dst->capacity)
-			memcpy(ptr, dst->array, element_size * dst->capacity);
-
-		bfree(dst->array);
-	}
-	dst->array = ptr;
-	dst->capacity = new_cap;
-}
-
-static inline void darray_resize(const size_t element_size, struct darray *dst,
-	const size_t size)
-{
-	int b_clear;
-	size_t old_num;
-
-	if (size == dst->num) {
-		return;
-	}
-	else if (size == 0) {
-		dst->num = 0;
-		return;
-	}
-
-	b_clear = size > dst->num;
-	old_num = dst->num;
-
-	darray_ensure_capacity(element_size, dst, size);
-	dst->num = size;
-
-	if (b_clear)
-		memset(darray_item(element_size, dst, old_num), 0,
-			element_size * (dst->num - old_num));
-}
-
-static inline void darray_copy(const size_t element_size, struct darray *dst,
-	const struct darray *da)
-{
-	if (da->num == 0) {
-		darray_free(dst);
-	}
-	else {
-		darray_resize(element_size, dst, da->num);
-		memcpy(dst->array, da->array, element_size * da->num);
-	}
-}
-
-static inline void darray_copy_array(const size_t element_size,
-	struct darray *dst, const void *array,
-	const size_t num)
-{
-	darray_resize(element_size, dst, num);
-	memcpy(dst->array, array, element_size * dst->num);
-}
-
-static inline void darray_move(struct darray *dst, struct darray *src)
-{
-	darray_free(dst);
-	memcpy(dst, src, sizeof(struct darray));
-	src->array = NULL;
-	src->capacity = 0;
-	src->num = 0;
-}
-
-static inline size_t darray_find(const size_t element_size,
-	const struct darray *da, const void *item,
-	const size_t idx)
-{
-	size_t i;
-
-	  assert(idx <= da->num);
-
-	for (i = idx; i < da->num; i++) {
-		void *compare = darray_item(element_size, da, i);
-		if (memcmp(compare, item, element_size) == 0)
-			return i;
-	}
-
-	return DARRAY_INVALID;
-}
-
-static inline size_t darray_push_back(const size_t element_size,
-	struct darray *dst, const void *item)
-{
-	darray_ensure_capacity(element_size, dst, ++dst->num);
-	memcpy(darray_end(element_size, dst), item, element_size);
-
-	return dst->num - 1;
-}
-
-static inline void *darray_push_back_new(const size_t element_size,
-	struct darray *dst)
-{
-	void *last;
-
-	darray_ensure_capacity(element_size, dst, ++dst->num);
-
-	last = darray_end(element_size, dst);
-	memset(last, 0, element_size);
-	return last;
-}
-
-static inline size_t darray_push_back_array(const size_t element_size,
-	struct darray *dst,
-	const void *array, const size_t num)
-{
-	size_t old_num;
-	if (!dst)
-		return 0;
-	if (!array || !num)
-		return dst->num;
-
-	old_num = dst->num;
-	darray_resize(element_size, dst, dst->num + num);
-	memcpy(darray_item(element_size, dst, old_num), array,
-		element_size * num);
-
-	return old_num;
-}
-
-static inline size_t darray_push_back_darray(const size_t element_size,
-	struct darray *dst,
-	const struct darray *da)
-{
-	return darray_push_back_array(element_size, dst, da->array, da->num);
-}
-
-static inline void darray_insert(const size_t element_size, struct darray *dst,
-	const size_t idx, const void *item)
-{
-	void *new_item;
-	size_t move_count;
-
-	assert(idx <= dst->num);
-
-	if (idx == dst->num) {
-		darray_push_back(element_size, dst, item);
-		return;
-	}
-
-	move_count = dst->num - idx;
-	darray_ensure_capacity(element_size, dst, ++dst->num);
-
-	new_item = darray_item(element_size, dst, idx);
-
-	memmove(darray_item(element_size, dst, idx + 1), new_item,
-		move_count * element_size);
-	memcpy(new_item, item, element_size);
-}
-
-static inline void *darray_insert_new(const size_t element_size,
-	struct darray *dst, const size_t idx)
-{
-	void *item;
-	size_t move_count;
-
-	assert(idx <= dst->num);
-	if (idx == dst->num)
-		return darray_push_back_new(element_size, dst);
-
-	item = darray_item(element_size, dst, idx);
-
-	move_count = dst->num - idx;
-	darray_ensure_capacity(element_size, dst, ++dst->num);
-	memmove(darray_item(element_size, dst, idx + 1), item,
-		move_count * element_size);
-
-	memset(item, 0, element_size);
-	return item;
-}
-
-static inline void darray_insert_array(const size_t element_size,
-	struct darray *dst, const size_t idx,
-	const void *array, const size_t num)
-{
-	size_t old_num;
-
-	assert(array != NULL);
-	assert(num != 0);
-	assert(idx <= dst->num);
-
-	old_num = dst->num;
-	darray_resize(element_size, dst, dst->num + num);
-
-	memmove(darray_item(element_size, dst, idx + num),
-		darray_item(element_size, dst, idx),
-		element_size * (old_num - idx));
-	memcpy(darray_item(element_size, dst, idx), array, element_size * num);
-}
-
-static inline void darray_insert_darray(const size_t element_size,
-	struct darray *dst, const size_t idx,
-	const struct darray *da)
-{
-	darray_insert_array(element_size, dst, idx, da->array, da->num);
-}
-
-static inline void darray_erase(const size_t element_size, struct darray *dst,
-	const size_t idx)
-{
-	assert(idx < dst->num);
-
-	if (idx >= dst->num || !--dst->num)
-		return;
-
-	memmove(darray_item(element_size, dst, idx),
-		darray_item(element_size, dst, idx + 1),
-		element_size * (dst->num - idx));
-}
-
-static inline void darray_erase_item(const size_t element_size,
-	struct darray *dst, const void *item)
-{
-	size_t idx = darray_find(element_size, dst, item, 0);
-	if (idx != DARRAY_INVALID)
-		darray_erase(element_size, dst, idx);
-}
-
-static inline void darray_erase_range(const size_t element_size,
-	struct darray *dst, const size_t start,
-	const size_t end)
-{
-	size_t count, move_count;
-
-	assert(start <= dst->num);
-	assert(end <= dst->num);
-	assert(end > start);
-
-	count = end - start;
-	if (count == 1) {
-		darray_erase(element_size, dst, start);
-		return;
-	}
-	else if (count == dst->num) {
-		dst->num = 0;
-		return;
-	}
-
-	move_count = dst->num - end;
-	if (move_count)
-		memmove(darray_item(element_size, dst, start),
-			darray_item(element_size, dst, end),
-			move_count * element_size);
-
-	dst->num -= count;
-}
-
-static inline void darray_pop_back(const size_t element_size,
-	struct darray *dst)
-{
-	assert(dst->num != 0);
-
-	if (dst->num)
-		darray_erase(element_size, dst, dst->num - 1);
-}
-
-static inline void darray_join(const size_t element_size, struct darray *dst,
-	struct darray *da)
-{
-	darray_push_back_darray(element_size, dst, da);
-	darray_free(da);
-}
-
-static inline void darray_split(const size_t element_size, struct darray *dst1,
-	struct darray *dst2, const struct darray *da,
-	const size_t idx)
-{
-	struct darray temp;
-
-	assert(da->num >= idx);
-	assert(dst1 != dst2);
-
-	darray_init(&temp);
-	darray_copy(element_size, &temp, da);
-
-	darray_free(dst1);
-	darray_free(dst2);
-
-	if (da->num) {
-		if (idx)
-			darray_copy_array(element_size, dst1, temp.array,
-				temp.num);
-		if (idx < temp.num - 1)
-			darray_copy_array(element_size, dst2,
-				darray_item(element_size, &temp, idx),
-				temp.num - idx);
-	}
-
-	darray_free(&temp);
-}
-
-static inline void darray_move_item(const size_t element_size,
-	struct darray *dst, const size_t from,
-	const size_t to)
-{
-	void *temp, *p_from, *p_to;
-
-	if (from == to)
-		return;
-
-	temp = malloc(element_size);
-	if (!temp) {
-		bcrash("darray_move_item: out of memory");
-		return;
-	}
-
-	p_from = darray_item(element_size, dst, from);
-	p_to = darray_item(element_size, dst, to);
-
-	memcpy(temp, p_from, element_size);
-
-	if (to < from)
-		memmove(darray_item(element_size, dst, to + 1), p_to,
-			element_size * (from - to));
-	else
-		memmove(p_from, darray_item(element_size, dst, from + 1),
-			element_size * (to - from));
-
-	memcpy(p_to, temp, element_size);
-	free(temp);
-}
-
-static inline void darray_swap(const size_t element_size, struct darray *dst,
-	const size_t a, const size_t b)
-{
-	void *temp, *a_ptr, *b_ptr;
-
-	assert(a < dst->num);
-	assert(b < dst->num);
-
-	if (a == b)
-		return;
-
-	temp = malloc(element_size);
-	if (!temp)
-		bcrash("darray_swap: out of memory");
-
-	a_ptr = darray_item(element_size, dst, a);
-	b_ptr = darray_item(element_size, dst, b);
-
-	memcpy(temp, a_ptr, element_size);
-	memcpy(a_ptr, b_ptr, element_size);
-	memcpy(b_ptr, temp, element_size);
-
-	free(temp);
-}
-
-/*
- * Defines to make dynamic arrays more type-safe.
- * Note: Still not 100% type-safe but much better than using darray directly
- *       Makes it a little easier to use as well.
- *
- *       I did -not- want to use a gigantic macro to generate a crapload of
- *       typesafe inline functions per type.  It just feels like a mess to me.
- */
-
-#define DARRAY(type)                     \
-	union {                          \
-		struct darray da;        \
-		struct {                 \
-			type *array;     \
-			size_t num;      \
-			size_t capacity; \
-		};                       \
-	}
-
-#define da_init(v) darray_init(&v.da)
-
-#define da_free(v) darray_free(&v.da)
-
-#define da_alloc_size(v) (sizeof(*v.array) * v.num)
-
-#define da_end(v) darray_end(sizeof(*v.array), &v.da)
-
-#define da_reserve(v, capacity) \
-	darray_reserve(sizeof(*v.array), &v.da, capacity)
-
-#define da_resize(v, size) darray_resize(sizeof(*v.array), &v.da, size)
-
-#define da_copy(dst, src) darray_copy(sizeof(*dst.array), &dst.da, &src.da)
-
-#define da_copy_array(dst, src_array, n) \
-	darray_copy_array(sizeof(*dst.array), &dst.da, src_array, n)
-
-#define da_move(dst, src) darray_move(&dst.da, &src.da)
-
+ 
 struct nv_bitstream;
 struct nv_texture;
 
@@ -540,7 +145,7 @@ struct nvenc_data {
 	DARRAY(struct nv_bitstream) bitstreams;
 	DARRAY(struct nv_texture) textures;
 	DARRAY(struct handle_tex) input_textures;
-	//struct circlebuf dts_list;
+	struct circlebuf dts_list;
 
 	DARRAY(uint8_t) packet_data;
 	int64_t packet_pts;
@@ -571,8 +176,7 @@ struct nv_bitstream {
 
 static bool nv_bitstream_init(struct nvenc_data *enc, struct nv_bitstream *bs)
 {
-	NV_ENC_CREATE_BITSTREAM_BUFFER buf = {
-		NV_ENC_CREATE_BITSTREAM_BUFFER_VER};
+	NV_ENC_CREATE_BITSTREAM_BUFFER buf = { NV_ENC_CREATE_BITSTREAM_BUFFER_VER};
 	NV_ENC_EVENT_PARAMS params = {NV_ENC_EVENT_PARAMS_VER};
 	HANDLE event = NULL;
 
@@ -690,7 +294,7 @@ static void nv_texture_free(struct nvenc_data *enc, struct nv_texture *nvtex)
 
 static const char *nvenc_get_name(void *type_data)
 {
-	UNUSED_PARAMETER(type_data);
+	//UNUSED_PARAMETER(type_data);
 	return "NVIDIA NVENC H.264 (new)";
 }
 
@@ -707,7 +311,7 @@ static inline int nv_get_cap(struct nvenc_data *enc, NV_ENC_CAPS cap)
 	return v;
 }
 
-static bool nvenc_update(void *data, int bitrate)
+/*static*/ bool nvenc_update(void *data, int bitrate)
 {
 	struct nvenc_data *enc = data;
 
@@ -809,8 +413,7 @@ static bool init_d3d11(struct nvenc_data *enc)
 
 static bool init_session(struct nvenc_data *enc)
 {
-	NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS params = {
-		NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER};
+	NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS params = {NV_ENC_OPEN_ENCODE_SESSION_EX_PARAMS_VER};
 	params.device = enc->device;
 	params.deviceType = NV_ENC_DEVICE_TYPE_DIRECTX;
 	params.apiVersion = NVENCAPI_VERSION;
@@ -1137,21 +740,22 @@ static bool init_textures(struct nvenc_data *enc)
 	return true;
 }
 
-static void nvenc_destroy(void *data);
+///static void nvenc_destroy(void *data);
 
 static void *nvenc_create_internal(/*chen_data_t *settings, chen_encoder_t *encoder,*/ bool psycho_aq)
 {
 	NV_ENCODE_API_FUNCTION_LIST init = {NV_ENCODE_API_FUNCTION_LIST_VER};
-	struct nvenc_data *enc = bzalloc(sizeof(*enc));
+	struct nvenc_data *enc = bmalloc(sizeof(*enc));
+	memset(enc, 0, sizeof(*enc));
 	//enc->encoder = encoder;
 	enc->first_packet = true;
 
 	if (!init_nvenc(/*encoder*/)) {
 		goto fail;
 	}
-	if (NV_FAILED(nv_create_instance(&init))) {
+	/*if (NV_FAILED(nv_create_instance(&init))) {
 		goto fail;
-	}
+	}*/
 	if (!init_d3d11(enc/*, settings*/)) {
 		goto fail;
 	}
@@ -1174,14 +778,17 @@ fail:
 	nvenc_destroy(enc);
 	return NULL;
 }
-
-static void *nvenc_create(/*chen_data_t *settings, chen_encoder_t *encoder*/)
+void helloworld()
+{
+	printf("%s\n", __FUNCTION__);
+}
+/*static*/ void *nvenc_create(/*chen_data_t *settings, chen_encoder_t *encoder*/)
 {
 	/* this encoder requires shared textures, this cannot be used on a
 	 * gpu other than the one chen is currently running on. */
 	const int gpu = 0;// (int)chen_data_get_int(settings, "gpu");
 	if (gpu != 0) {
-		blog(0,  "[jim-nvenc] different GPU selected by user, falling back to ffmpeg");
+		WARNING_EX_LOG(  "[jim-nvenc] different GPU selected by user, falling back to ffmpeg");
 		goto reroute;
 	}
 
@@ -1197,7 +804,7 @@ static void *nvenc_create(/*chen_data_t *settings, chen_encoder_t *encoder*/)
 	struct nvenc_data *enc = nvenc_create_internal(/*settings, encoder,*/ psycho_aq);
 	if ((enc == NULL) && psycho_aq) 
 	{
-		blog(0, "[jim-nvenc] nvenc_create_internal failed, trying again without Psycho Visual Tuning");
+		WARNING_EX_LOG( "[jim-nvenc] nvenc_create_internal failed, trying again without Psycho Visual Tuning");
 		enc = nvenc_create_internal(/*settings, encoder,*/ false);
 	}
 
@@ -1211,7 +818,7 @@ reroute:
 
 static bool get_encoded_packet(struct nvenc_data *enc, bool finalize);
 
-static void nvenc_destroy(void *data)
+/*static*/ void nvenc_destroy(void *data)
 {
 	struct nvenc_data *enc = data;
 
@@ -1334,7 +941,7 @@ static bool get_encoded_packet(struct nvenc_data *enc, bool finalize)
 			size_t size;
 
 			enc->first_packet = false;
-			chen_extract_avc_headers(lock.bitstreamBufferPtr,
+			extract_avc_headers(lock.bitstreamBufferPtr,
 						lock.bitstreamSizeInBytes,
 						&new_packet, &size,
 						&enc->header, &enc->header_size,
@@ -1376,8 +983,13 @@ static bool get_encoded_packet(struct nvenc_data *enc, bool finalize)
 
 	return true;
 }
-
-static bool nvenc_encode_tex(void *data, uint32_t handle, int64_t pts,
+/*
+void *data, uint32_t handle, int64_t pts,
+		uint64_t lock_key, uint64_t *next_key,
+		struct encoder_packet *packet,
+		bool *received_packet
+*/
+/*static*/ bool nvenc_encode_tex(void *data, uint32_t handle, int64_t pts,
 			     uint64_t lock_key, uint64_t *next_key,
 			     struct encoder_packet *packet,
 			     bool *received_packet)
@@ -1409,7 +1021,7 @@ static bool nvenc_encode_tex(void *data, uint32_t handle, int64_t pts,
 		return false;
 	}
 
-	//circlebuf_push_back(&enc->dts_list, &pts, sizeof(pts));
+	circlebuf_push_back(&enc->dts_list, &pts, sizeof(pts));
 
 	/* ------------------------------------ */
 	/* wait for output bitstream/tex        */
@@ -1421,8 +1033,7 @@ static bool nvenc_encode_tex(void *data, uint32_t handle, int64_t pts,
 
 	km->lpVtbl->AcquireSync(km, lock_key, INFINITE);
 
-	context->lpVtbl->CopyResource(context, (ID3D11Resource *)output_tex,
-				      (ID3D11Resource *)input_tex);
+	context->lpVtbl->CopyResource(context, (ID3D11Resource *)output_tex, (ID3D11Resource *)input_tex);
 
 	km->lpVtbl->ReleaseSync(km, *next_key);
 
@@ -1476,8 +1087,8 @@ static bool nvenc_encode_tex(void *data, uint32_t handle, int64_t pts,
 	/* output encoded packet                */
 
 	if (enc->packet_data.num) {
-		//int64_t dts;
-		////circlebuf_pop_front(&enc->dts_list, &dts, sizeof(dts));
+		int64_t dts;
+		 circlebuf_pop_front(&enc->dts_list, &dts, sizeof(dts));
 
 		///* subtract bframe delay from dts */
 		//dts -= (int64_t)enc->bframes * packet->timebase_num;
@@ -1498,7 +1109,8 @@ static bool nvenc_encode_tex(void *data, uint32_t handle, int64_t pts,
 	return true;
 }
 
-extern void nvenc_defaults(/*chen_data_t *settings*/);
+void nvenc_defaults(/*chen_data_t *settings*/)
+{}
 //extern chen_properties_t *nvenc_properties(void *unused);
 
 static bool nvenc_extra_data(void *data, uint8_t **header, size_t *size)
@@ -1526,19 +1138,22 @@ static bool nvenc_sei_data(void *data, uint8_t **sei, size_t *size)
 	*size = enc->sei_size;
 	return true;
 }
+bool init_nv_encode(struct cencoder_info * info)
+{
 
-//struct chen_encoder_info nvenc_info = {
+	return true;
+}
+//  struct cencoder_info nvenc_info = {
 //	.id = "jim_nvenc",
-//	.codec = "h264",
-//	.type = chen_ENCODER_VIDEO,
-//	.caps = chen_ENCODER_CAP_PASS_TEXTURE | chen_ENCODER_CAP_DYN_BITRATE,
+//	.codec = "h264", 
 //	.get_name = nvenc_get_name,
 //	.create = nvenc_create,
 //	.destroy = nvenc_destroy,
 //	.update = nvenc_update,
 //	.encode_texture = nvenc_encode_tex,
 //	.get_defaults = nvenc_defaults,
-//	.get_properties = nvenc_properties,
+//	//.get_properties = nvenc_properties,
 //	.get_extra_data = nvenc_extra_data,
 //	.get_sei_data = nvenc_sei_data,
 //};
+//
