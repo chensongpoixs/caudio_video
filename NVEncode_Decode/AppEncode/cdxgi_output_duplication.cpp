@@ -11,7 +11,7 @@ purpose:		dxgi _duplication
 #include <d3d11.h>
 #include <stdlib.h>
 #include <iostream>
-
+#include "cnv_encode.h"
 //d3d11.lib
 //dxgi.lib
 #pragma comment  (lib,"d3d11.lib")
@@ -44,17 +44,7 @@ namespace chen {
 		}
 		if (hr && m_pDupTex2D)
 		{
-			D3D11_TEXTURE2D_DESC desc;
-			m_pDupTex2D->GetDesc(&desc);
-			printf("desc Format = %d\n", static_cast<int>(desc.Format));
-			if (!m_new_tex2D)
-			{
-				desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-				desc.Usage = D3D11_USAGE_STAGING;
-				desc.BindFlags = 0;
-				desc.MiscFlags = 0;
-				m_d3d_ptr->CreateTexture2D(&desc, NULL, &m_new_tex2D);
-			}
+			shared_texture();
 			Map();
 
 
@@ -63,7 +53,10 @@ namespace chen {
 	}
 	void cdxgi_output_duplication::Map()
 	{
-
+		if (!m_new_tex2D)
+		{
+			return;
+		}
 		m_ctx_ptr->CopyResource(m_new_tex2D, m_pDupTex2D);
 
 		D3D11_MAPPED_SUBRESOURCE map;
@@ -80,6 +73,40 @@ namespace chen {
 
 		
 		 
+	}
+	void cdxgi_output_duplication::shared_texture()
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		m_pDupTex2D->GetDesc(&desc);
+		printf("desc Format = %d\n", static_cast<int>(desc.Format));
+		if (!m_new_tex2D)
+		{
+			//desc.CPUAccessFlags = D3D11_BIND_SHADER_RESOURCE;
+			desc.Usage = D3D11_USAGE_DEFAULT;
+			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+			m_d3d_ptr->CreateTexture2D(&desc, NULL, &m_new_tex2D);
+			IDXGIResource *dxgi_res;
+			HRESULT hr = m_new_tex2D->QueryInterface(__uuidof(IDXGIResource), (void **)&dxgi_res);
+			if (FAILED(hr)) {
+				WARNING_EX_LOG("create_d3d11_tex: failed to query IDXGIResource interface from texture", hr);
+				return  ;
+			}
+			hr = dxgi_res->GetSharedHandle(&m_SharedHandle_ptr);
+				dxgi_res->Release();
+				if (FAILED(hr))
+				{
+					WARNING_EX_LOG("create_d3d11_tex: failed to get shared handle",
+						hr);
+					return  ;
+				}
+		}
+		else
+		{
+			// width != width 
+		}
+
+
 	}
 	bool cdxgi_output_duplication::_init_dxgi()
 	{

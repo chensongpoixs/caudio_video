@@ -753,9 +753,9 @@ static void *nvenc_create_internal(/*chen_data_t *settings, chen_encoder_t *enco
 	if (!init_nvenc(/*encoder*/)) {
 		goto fail;
 	}
-	/*if (NV_FAILED(nv_create_instance(&init))) {
+	if (NV_FAILED(nv_create_instance(&init))) {
 		goto fail;
-	}*/
+	}
 	if (!init_d3d11(enc/*, settings*/)) {
 		goto fail;
 	}

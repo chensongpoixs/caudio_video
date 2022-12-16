@@ -39,6 +39,10 @@ namespace chen {
 
 
 		void Map();
+
+
+
+		void shared_texture();
 	protected:
 	private:
 
@@ -57,7 +61,7 @@ namespace chen {
 		ID3D11Texture2D *  m_pDupTex2D = nullptr;
 
 		ID3D11Texture2D *  m_new_tex2D = nullptr;
-
+		HANDLE   m_SharedHandle_ptr;
 		/// Failure count from Capture API
 		UINT				m_failCount = 0;
 	};

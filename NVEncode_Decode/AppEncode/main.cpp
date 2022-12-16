@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 {
 
 	//nvenc_info.get_name(NULL);
-	//nvenc_create();
+	 nvenc_create();
 	//helloworld();
 
 	chen::cdxgi_output_duplication dxgi;
