@@ -84,8 +84,10 @@ namespace chen {
 			//desc.CPUAccessFlags = D3D11_BIND_SHADER_RESOURCE;
 			desc.Usage = D3D11_USAGE_DEFAULT;
 			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-			desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+			desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED; // D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX; // D3D11_RESOURCE_MISC_SHARED;
 			m_d3d_ptr->CreateTexture2D(&desc, NULL, &m_new_tex2D);
+
+			//m_new_tex2D->SetEvictionPriority(DXGI_RESOURCE_PRIORITY_MAXIMUM);
 			IDXGIResource *dxgi_res;
 			HRESULT hr = m_new_tex2D->QueryInterface(__uuidof(IDXGIResource), (void **)&dxgi_res);
 			if (FAILED(hr)) {
@@ -93,6 +95,16 @@ namespace chen {
 				return  ;
 			}
 			hr = dxgi_res->GetSharedHandle(&m_SharedHandle_ptr);
+			 IDXGIKeyedMutex * km;
+		/*	hr = m_new_tex2D->QueryInterface( __uuidof(IDXGIKeyedMutex), (void **)&km);
+			if (FAILED(hr)) {
+				WARNING_EX_LOG("Failed to query "
+					"IDXGIKeyedMutex",
+					hr);
+			}
+
+			km->AcquireSync(0, INFINITE);*/
+			//acquired = true;
 				dxgi_res->Release();
 				if (FAILED(hr))
 				{

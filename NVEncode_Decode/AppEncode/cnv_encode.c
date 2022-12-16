@@ -247,7 +247,7 @@ static bool nv_texture_init(struct nvenc_data *enc, struct nv_texture *nvtex)
 	desc.Height = enc->cy;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_NV12;
+	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;// DXGI_FORMAT_NV12;
 	desc.SampleDesc.Count = 1;
 	desc.BindFlags = D3D11_BIND_RENDER_TARGET;
 
@@ -264,7 +264,7 @@ static bool nv_texture_init(struct nvenc_data *enc, struct nv_texture *nvtex)
 	res.resourceToRegister = tex;
 	res.width = enc->cx;
 	res.height = enc->cy;
-	res.bufferFormat = NV_ENC_BUFFER_FORMAT_NV12;
+	res.bufferFormat = NV_ENC_BUFFER_FORMAT_ARGB;// NV_ENC_BUFFER_FORMAT_NV12;
 
 	if (NV_FAILED(nv.nvEncRegisterResource(enc->session, &res))) 
 	{
@@ -869,7 +869,7 @@ static ID3D11Texture2D *get_tex_from_handle(struct nvenc_data *enc,
 					    IDXGIKeyedMutex **km_out)
 {
 	ID3D11Device *device = enc->device;
-	IDXGIKeyedMutex *km;
+	IDXGIKeyedMutex *km = NULL;
 	ID3D11Texture2D *input_tex;
 	HRESULT hr;
 
@@ -890,16 +890,16 @@ static ID3D11Texture2D *get_tex_from_handle(struct nvenc_data *enc,
 		return NULL;
 	}
 
-	hr = input_tex->lpVtbl->QueryInterface(input_tex, &IID_IDXGIKeyedMutex,
-					       &km);
+	/*hr = input_tex->lpVtbl->QueryInterface(input_tex, &IID_IDXGIKeyedMutex,
+		&km);
 	if (FAILED(hr)) {
 		error_hr("QueryInterface(IDXGIKeyedMutex) failed");
 		input_tex->lpVtbl->Release(input_tex);
 		return NULL;
-	}
+	}*/
 
-	input_tex->lpVtbl->SetEvictionPriority(input_tex,
-					       DXGI_RESOURCE_PRIORITY_MAXIMUM);
+	/*input_tex->lpVtbl->SetEvictionPriority(input_tex,
+		DXGI_RESOURCE_PRIORITY_MAXIMUM);*/
 
 	*km_out = km;
 
@@ -983,6 +983,9 @@ static bool get_encoded_packet(struct nvenc_data *enc, bool finalize)
 
 	return true;
 }
+
+static FILE *out_rgba_ptr = NULL;
+static FILE *out_h264_file_ptr =   NULL;
 /*
 void *data, uint32_t handle, int64_t pts,
 		uint64_t lock_key, uint64_t *next_key,
@@ -999,6 +1002,7 @@ void *data, uint32_t handle, int64_t pts,
 	ID3D11DeviceContext *context = enc->context;
 	ID3D11Texture2D *input_tex;
 	ID3D11Texture2D *output_tex;
+	static ID3D11Texture2D *new_tex;
 	IDXGIKeyedMutex *km;
 	struct nv_texture *nvtex;
 	struct nv_bitstream *bs;
@@ -1016,10 +1020,10 @@ void *data, uint32_t handle, int64_t pts,
 	input_tex = get_tex_from_handle(enc, handle, &km);
 	output_tex = nvtex->tex;
 
-	if (!input_tex) {
+	/*if (!input_tex) {
 		*next_key = lock_key;
 		return false;
-	}
+	}*/
 
 	circlebuf_push_back(&enc->dts_list, &pts, sizeof(pts));
 
@@ -1031,11 +1035,64 @@ void *data, uint32_t handle, int64_t pts,
 	/* ------------------------------------ */
 	/* copy to output tex                   */
 
-	km->lpVtbl->AcquireSync(km, lock_key, INFINITE);
+	//km->lpVtbl->AcquireSync(km, lock_key, INFINITE);
 
 	context->lpVtbl->CopyResource(context, (ID3D11Resource *)output_tex, (ID3D11Resource *)input_tex);
 
-	km->lpVtbl->ReleaseSync(km, *next_key);
+	if (!new_tex)
+	{
+		D3D11_TEXTURE2D_DESC bufferTextureDesc = { 0 };
+		bufferTextureDesc.Width = 1920;
+		bufferTextureDesc.Height = 1080;
+		bufferTextureDesc.MipLevels = 1;
+		bufferTextureDesc.ArraySize = 1;
+
+		bufferTextureDesc.SampleDesc.Count = 1;
+
+		bufferTextureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+		bufferTextureDesc.BindFlags = 0;
+		bufferTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		bufferTextureDesc.MiscFlags = 0;
+		bufferTextureDesc.Usage = D3D11_USAGE_STAGING;
+		device->lpVtbl->CreateTexture2D(device, &bufferTextureDesc, NULL, &new_tex);
+	}
+	else
+	{
+		context->lpVtbl->CopyResource(context, (ID3D11Resource *)new_tex, (ID3D11Resource *)input_tex);
+
+		D3D11_MAPPED_SUBRESOURCE mapd;
+		UINT subResource = 0;
+		//D3D11CalcSubresource(0, 0, 1);
+		HRESULT hr = context->lpVtbl->Map (context, (ID3D11Resource*)new_tex, subResource, D3D11_MAP_READ, 0, &mapd);
+		if (FAILED(hr))
+		{
+			ERROR_EX_LOG("[%s][%d][ID3D11DeviceContext_Map][ERROR]\n", __FUNCTION__, __LINE__);
+
+			return;
+		}
+		//size_t rgba_size = data.cx * data.cy * 4;
+
+		// filp
+		if (!out_rgba_ptr)
+		{
+			out_rgba_ptr = fopen("rgba.rgba", "wb+");
+		  }
+
+		fwrite(mapd.pData, 1, 1920 * 1080 * 4, out_rgba_ptr);
+		fflush(out_rgba_ptr);
+		 
+
+		context->lpVtbl->Unmap(context, (ID3D11Resource*)new_tex, subResource);
+		{
+			SYSTEMTIME t1;
+			GetSystemTime(&t1);
+			DEBUG_EX_LOG("cpu --> mem end  cur = %u", t1.wMilliseconds);
+		}
+	}
+	
+
+
+	//km->lpVtbl->ReleaseSync(km, *next_key);
 
 	/* ------------------------------------ */
 	/* map output tex so nvenc can use it   */
@@ -1055,7 +1112,7 @@ void *data, uint32_t handle, int64_t pts,
 	params.version = NV_ENC_PIC_PARAMS_VER;
 	params.pictureStruct = NV_ENC_PIC_STRUCT_FRAME;
 	params.inputBuffer = nvtex->mapped_res;
-	params.bufferFmt = NV_ENC_BUFFER_FORMAT_NV12;
+	params.bufferFmt = NV_ENC_BUFFER_FORMAT_ARGB;// NV_ENC_BUFFER_FORMAT_NV12;
 	params.inputTimeStamp = (uint64_t)pts;
 	params.inputWidth = enc->cx;
 	params.inputHeight = enc->cy;
@@ -1096,14 +1153,26 @@ void *data, uint32_t handle, int64_t pts,
 		//*received_packet = true;
 		//packet->data = enc->packet_data.array;
 		//packet->size = enc->packet_data.num;
-		//static uint64_t count = 0;
-		//debug("[count = %llu][packet->size = %llu]", ++count, packet->size);
+		static uint64_t count = 0;
+		printf("[count = %llu][packet->size = %llu]\n", ++count, enc->packet_data.num);
+
+
+		if (!out_h264_file_ptr)
+		{
+			out_h264_file_ptr = fopen("./h264.h264", "wb+");;
+		}
+
+		if (enc->packet_data.array)
+		{
+			fwrite(enc->packet_data.array, 1, enc->packet_data.num, out_h264_file_ptr);
+			fflush(out_h264_file_ptr);
+		}
 		//packet->type = chen_ENCODER_VIDEO;
 		//packet->pts = enc->packet_pts;
 		//packet->dts = dts;
 		//packet->keyframe = enc->packet_keyframe;
 	} else {
-		*received_packet = false;
+		//*received_packet = false;
 	}
 
 	return true;

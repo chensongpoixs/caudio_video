@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 {
 
 	//nvenc_info.get_name(NULL);
-	 nvenc_create();
+	void * p =  nvenc_create();
 	//helloworld();
 
 	chen::cdxgi_output_duplication dxgi;
@@ -19,6 +19,11 @@ int main(int argc, char *argv[])
 	while (true)
 	{
 		dxgi.Capture(30);
+		uint64_t next_key = 0;
+		++next_key;
+		int64_t pts = 1;
+		++pts;
+		nvenc_encode_tex(p, (uint32_t)dxgi.get_shared_handle(), pts, next_key -1, &next_key, 0, 0);
 		Sleep(1);
 	}
 

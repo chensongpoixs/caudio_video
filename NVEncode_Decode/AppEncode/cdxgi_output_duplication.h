@@ -40,7 +40,9 @@ namespace chen {
 
 		void Map();
 
-
+		HANDLE get_shared_handle() const {
+			return  m_SharedHandle_ptr;
+		};
 
 		void shared_texture();
 	protected:
