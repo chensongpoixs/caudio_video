@@ -94,6 +94,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -122,6 +123,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,12 +133,16 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="cavc.c" />
+    <ClCompile Include="cdda_impl.cpp" />
+    <ClCompile Include="cdxgi_output_duplication.cpp" />
     <ClCompile Include="cnv_encode.c" />
     <ClCompile Include="cnv_encode_helpers.c" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cavc.h" />
+    <ClInclude Include="cdda_impl.h" />
+    <ClInclude Include="cdxgi_output_duplication.h" />
     <ClInclude Include="circlebuf.h" />
     <ClInclude Include="cnv_encode.h" />
     <ClInclude Include="cnv_encode_helpers.h" />
