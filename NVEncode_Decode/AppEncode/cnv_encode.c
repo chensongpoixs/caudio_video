@@ -38,26 +38,29 @@ static inline void SHOW(const char* format, va_list args)
 		out_file_log_ptr = fopen(g_nv_encode_file_name, "wb+");;;
 	}
 
-	if (!out_file_log_ptr)
+	/*if (!out_file_log_ptr)
 	{
 		return;
-	}
+	}*/
 
 	char message[10240] = { 0 };
 
 	int num = _vsprintf_p(message, 1024, format, args);
-	if (num > 0)
+	if ( out_file_log_ptr)
 	{
 		fprintf(out_file_log_ptr, "%s\n", message);
 		fflush(out_file_log_ptr);
 	}
+	printf("%s\n", message);
+	fflush(stdout);
+
 }
 void LOG(const char* format, ...)
 {
-	if (!out_file_log_ptr)
+	/*if (!out_file_log_ptr)
 	{
 		return;
-	}
+	}*/
 
 	va_list args;
 	va_start(args, format);
@@ -389,13 +392,32 @@ static bool init_d3d11(struct nvenc_data *enc)
 		return false;
 	}
 
-	hr = factory->lpVtbl->EnumAdapters(factory, 0, &adapter);
-	factory->lpVtbl->Release(factory);
-	if (FAILED(hr)) 
+	// —°‘ÒGPU¿‡–ÕNVIDIA
+	for (int gpuIndex = 0; gpuIndex <= 5; ++gpuIndex)
 	{
-		error_hr("EnumAdapters failed");
-		return false;
+		hr = factory->lpVtbl->EnumAdapters(factory, gpuIndex, &adapter);
+
+		//
+		char desc[128] = { 0 };
+		DXGI_ADAPTER_DESC adapterDesc;
+		adapter->lpVtbl->GetDesc(adapter, &adapterDesc);
+		wcstombs(desc, adapterDesc.Description, sizeof(desc));
+		info("[adapter name  = %s]", desc);
+
+		factory->lpVtbl->Release(factory);
+		if (FAILED(hr))
+		{
+			error_hr("EnumAdapters failed");
+			return false;
+		}
+
+		if (strstr(desc, "NVIDIA") == NULL)
+		{
+			continue;
+		}
+		break;
 	}
+	
 
 	hr = create_device(adapter, D3D_DRIVER_TYPE_UNKNOWN, NULL, 0, NULL, 0,
 			   D3D11_SDK_VERSION, &device, NULL, &context);
@@ -747,7 +769,7 @@ static void *nvenc_create_internal(/*chen_data_t *settings, chen_encoder_t *enco
 	NV_ENCODE_API_FUNCTION_LIST init = {NV_ENCODE_API_FUNCTION_LIST_VER};
 	struct nvenc_data *enc = bmalloc(sizeof(*enc));
 	memset(enc, 0, sizeof(*enc));
-	//enc->encoder = encoder;
+	
 	enc->first_packet = true;
 
 	if (!init_nvenc(/*encoder*/)) {
@@ -794,11 +816,7 @@ void helloworld()
 
 	 
 
-	/*if (!chen_nv12_tex_active()) 
-	{
-		blog( "[jim-nvenc] nv12 not active, falling back to ffmpeg");
-		goto reroute;
-	}*/
+	
 
 	const bool psycho_aq = true; // chen_data_get_bool(settings, "psycho_aq");
 	struct nvenc_data *enc = nvenc_create_internal(/*settings, encoder,*/ psycho_aq);

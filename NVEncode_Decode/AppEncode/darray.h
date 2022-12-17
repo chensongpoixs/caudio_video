@@ -15,7 +15,7 @@
  */
 
 #pragma once
-
+#include "bmem.h"
 //#include "c99defs.h"
 #include <string.h>
 #include <stdlib.h>
@@ -32,10 +32,10 @@
 
  
 
-#define  bmalloc    malloc   
-#define bfree free 
-
-#define brealloc   realloc
+//#define  bmalloc    malloc   
+//#define bfree free 
+//
+//#define brealloc   realloc
 
 #ifdef __cplusplus
 extern "C" {

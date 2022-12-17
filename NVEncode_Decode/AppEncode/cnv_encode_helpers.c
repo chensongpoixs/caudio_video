@@ -22,9 +22,9 @@ static CRITICAL_SECTION   init_mutex;// crit_section_;
 NV_ENCODE_API_FUNCTION_LIST nv = {NV_ENCODE_API_FUNCTION_LIST_VER};
 NV_CREATE_INSTANCE_FUNC nv_create_instance = NULL;
 
-#define error(format, ...) 
+#define error  ERROR_EX_LOG
 //blog(LOG_ERROR, "[jim-nvenc] " format, ##__VA_ARGS__)
-#define debug(format, ...) 
+#define debug  DEBUG_EX_LOG
 //blog(LOG_DEBUG, "[jim-nvenc] " format, ##__VA_ARGS__)
 
 bool nv_failed(  NVENCSTATUS err, const char *func, const char *call)

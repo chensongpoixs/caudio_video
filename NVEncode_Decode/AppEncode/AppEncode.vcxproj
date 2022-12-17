@@ -132,6 +132,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="bmem.c" />
     <ClCompile Include="cavc.c" />
     <ClCompile Include="cdda_impl.cpp" />
     <ClCompile Include="cdxgi_output_duplication.cpp" />
@@ -140,6 +141,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bmem.h" />
     <ClInclude Include="cavc.h" />
     <ClInclude Include="cdda_impl.h" />
     <ClInclude Include="cdxgi_output_duplication.h" />

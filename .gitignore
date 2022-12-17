@@ -1,3 +1,6 @@
 NVEncode_Decode/.vs
 NVEncode_Decode/bin/*
 NVEncode_Decode/vsout/*
+/NVEncode_Decode/AppEncode/*.h264
+/NVEncode_Decode/AppEncode/*.yuv
+/NVEncode_Decode/AppEncode/*.rgba

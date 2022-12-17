@@ -7,6 +7,7 @@
     <ClCompile Include="cnv_encode_helpers.c" />
     <ClCompile Include="cdxgi_output_duplication.cpp" />
     <ClCompile Include="cdda_impl.cpp" />
+    <ClCompile Include="bmem.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="nvEncodeAPI.h" />
@@ -17,5 +18,6 @@
     <ClInclude Include="circlebuf.h" />
     <ClInclude Include="cdxgi_output_duplication.h" />
     <ClInclude Include="cdda_impl.h" />
+    <ClInclude Include="bmem.h" />
   </ItemGroup>
 </Project>
