@@ -227,7 +227,8 @@ void extract_avc_headers(const uint8_t *packet, size_t size,
 
 	nal_start = avc_find_startcode(packet, end);
 	nal_end = NULL;
-	while (nal_end != end) {
+	while (nal_end != end) 
+	{
 		nal_codestart = nal_start;
 
 		while (nal_start < end && !*(nal_start++))
@@ -242,13 +243,13 @@ void extract_avc_headers(const uint8_t *packet, size_t size,
 		if (!nal_end)
 			nal_end = end;
 
-		if (type ==  NAL_SPS || type ==  NAL_PPS) {
-			da_push_back_array(header, nal_codestart,
-				nal_end - nal_codestart);
+		if (type ==  NAL_SPS || type ==  NAL_PPS) 
+		{
+			da_push_back_array(header, nal_codestart, nal_end - nal_codestart);
 		}
-		else if (type ==  NAL_SEI) {
-			da_push_back_array(sei, nal_codestart,
-				nal_end - nal_codestart);
+		else if (type ==  NAL_SEI) 
+		{
+			da_push_back_array(sei, nal_codestart, nal_end - nal_codestart);
 
 		}
 		else {

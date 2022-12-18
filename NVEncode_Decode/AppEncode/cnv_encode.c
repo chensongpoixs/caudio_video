@@ -463,8 +463,8 @@ static bool init_encoder(struct nvenc_data *enc/*, chen_data_t *settings*/, bool
 	//video_t *video = chen_encoder_video(enc->encoder);
 	//const struct video_output_info *voi = video_output_get_info(video);
 
-	enc->cx = 1920;
-	enc->cy = 1080;
+	enc->cx = 2560;
+	enc->cy = 1440;
 
 	/* -------------------------- */
 	/* get preset                 */
@@ -954,7 +954,8 @@ static bool get_encoded_packet(struct nvenc_data *enc, bool finalize)
 			return false;
 		}
 
-		if (enc->first_packet) {
+		/*if (enc->first_packet) 
+		{
 			uint8_t *new_packet;
 			size_t size;
 
@@ -967,7 +968,8 @@ static bool get_encoded_packet(struct nvenc_data *enc, bool finalize)
 
 			da_copy_array(enc->packet_data, new_packet, size);
 			bfree(new_packet);
-		} else {
+		} else*/
+		{
 			da_copy_array(enc->packet_data, lock.bitstreamBufferPtr,
 				      lock.bitstreamSizeInBytes);
 		}
@@ -1060,8 +1062,8 @@ void *data, uint32_t handle, int64_t pts,
 	if (!new_tex)
 	{
 		D3D11_TEXTURE2D_DESC bufferTextureDesc = { 0 };
-		bufferTextureDesc.Width = 1920;
-		bufferTextureDesc.Height = 1080;
+		bufferTextureDesc.Width = 2560;
+		bufferTextureDesc.Height = 1440;
 		bufferTextureDesc.MipLevels = 1;
 		bufferTextureDesc.ArraySize = 1;
 
@@ -1096,7 +1098,7 @@ void *data, uint32_t handle, int64_t pts,
 			out_rgba_ptr = fopen("rgba.rgba", "wb+");
 		  }
 
-		fwrite(mapd.pData, 1, 1920 * 1080 * 4, out_rgba_ptr);
+		fwrite(mapd.pData, 1, 2560 * 1440 * 4, out_rgba_ptr);
 		fflush(out_rgba_ptr);
 		 
 
@@ -1104,7 +1106,7 @@ void *data, uint32_t handle, int64_t pts,
 		{
 			SYSTEMTIME t1;
 			GetSystemTime(&t1);
-			DEBUG_EX_LOG("cpu --> mem end  cur = %u", t1.wMilliseconds);
+			//DEBUG_EX_LOG("cpu --> mem end  cur = %u", t1.wMilliseconds);
 		}
 	}
 	

@@ -65,7 +65,7 @@ namespace chen {
 		static FILE *out_file_ptr = fopen("./test.yuv", "wb+");
 		if (SUCCEEDED(hr))
 		{
-			fwrite(map.pData, 1, 1920 * 1080 * 4, out_file_ptr);
+			fwrite(map.pData, 1, 1440 * 2560 * 4, out_file_ptr);
 			fflush(out_file_ptr);
 			m_ctx_ptr->Unmap(m_new_tex2D, 0);
 		}
