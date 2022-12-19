@@ -15,7 +15,7 @@ purpose:		nv_encode
 #include <stdbool.h>
  
 #include "nvEncodeAPI.h"
-
+//#include <dxgi.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,10 +26,32 @@ extern "C" {
 #endif
  
 
-void helloworld();
+struct cencoder_config
+{
+	uint32_t width;
+	uint32_t height;
+	uint32_t frame_rate;
+	uint32_t bitrate;
+	uint32_t max_bitrate;
+	uint32_t gop_size;
+	const char * codec_name; // default H264;
+	uint32_t gpu_index;
+	uint32_t/*DXGI_FORMAT*/ format;
+	const char * rc; // CBR;
+	uint32_t cqp;
+	uint32_t keyint_sec;
+	const char *profile; // "high"
+	const char * preset; // "ll";
+	bool lookahead; // false;
+	uint32_t bf; // 2
+	uint32_t frameRateNum  ;
+	uint32_t frameRateDen ;
+	bool repeat_headers; // pps //sps info
+	bool psycho_aq; //
 
+};
 
-  void *nvenc_create();
+  void *nvenc_create(const struct cencoder_config * encoderconfig);
 void nvenc_destroy(void *data);
 bool nvenc_update(void *data, int bitrate);
 bool nvenc_encode_tex(void *data, uint32_t handle, int64_t pts,

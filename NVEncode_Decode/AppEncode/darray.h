@@ -427,7 +427,7 @@ static inline void darray_move_item(const size_t element_size,
 
 	temp = malloc(element_size);
 	if (!temp) {
-		bcrash("darray_move_item: out of memory");
+		DEBUG_EX_LOG("darray_move_item: out of memory");
 		return;
 	}
 

@@ -31,7 +31,7 @@ namespace chen {
 	class cdxgi_output_duplication
 	{
 	public:
-		cdxgi_output_duplication();
+		explicit cdxgi_output_duplication();
 		~cdxgi_output_duplication();
 
 	public:
@@ -49,6 +49,10 @@ namespace chen {
 		};
 
 		void shared_texture();
+
+
+		uint32_t width();
+		uint32_t height();
 	protected:
 	private:
 

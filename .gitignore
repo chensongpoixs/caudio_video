@@ -5,3 +5,4 @@ NVEncode_Decode/vsout/*
 /NVEncode_Decode/AppEncode/*.yuv
 /NVEncode_Decode/AppEncode/*.rgba
 /NVEncode_Decode/AppEncode/log
+/*.bak

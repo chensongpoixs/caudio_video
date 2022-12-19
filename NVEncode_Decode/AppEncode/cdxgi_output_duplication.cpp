@@ -96,8 +96,8 @@ namespace chen {
 				return  ;
 			}
 			hr = dxgi_res->GetSharedHandle(&m_SharedHandle_ptr);
-			 IDXGIKeyedMutex * km;
-		/*	hr = m_new_tex2D->QueryInterface( __uuidof(IDXGIKeyedMutex), (void **)&km);
+			/*	 IDXGIKeyedMutex * km;
+			hr = m_new_tex2D->QueryInterface( __uuidof(IDXGIKeyedMutex), (void **)&km);
 			if (FAILED(hr)) {
 				WARNING_EX_LOG("Failed to query "
 					"IDXGIKeyedMutex",
@@ -120,6 +120,24 @@ namespace chen {
 		}
 
 
+	}
+	uint32_t cdxgi_output_duplication::width()
+	{
+		if (!m_dda_impl_ptr)
+		{
+			ERROR_EX_LOG("not dda impl null !!!");
+			return 0;
+		}
+		return m_dda_impl_ptr->width();
+	}
+	uint32_t cdxgi_output_duplication::height()
+	{
+		if (!m_dda_impl_ptr)
+		{
+			ERROR_EX_LOG("not dda impl null !!!");
+			return 0;
+		}
+		return m_dda_impl_ptr->height();
 	}
 	bool cdxgi_output_duplication::_init_dxgi()
 	{

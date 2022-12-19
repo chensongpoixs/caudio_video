@@ -27,13 +27,18 @@ namespace chen {
 	class cdda_impl
 	{
 		public:
-			cdda_impl(ID3D11Device *pDev, ID3D11DeviceContext* pDevCtx);
+			explicit cdda_impl(ID3D11Device *pDev, ID3D11DeviceContext* pDevCtx);
 			~cdda_impl();
 	public:
 		bool init();
 
 		bool update(ID3D11Texture2D **ppTex2D, int wait);
 		void destroy();
+
+
+	public:
+		uint32_t width() const { return m_width; }
+		uint32_t height() const { return m_height; }
 	private:
 		/// The DDA object
 		IDXGIOutputDuplication* m_dup_ptr; // = nullptr;
@@ -44,9 +49,9 @@ namespace chen {
 		/// The resource used to acquire a new captured frame from DDA
 		IDXGIResource *   m_resource_ptr; // = nullptr;
 		/// Output width obtained from DXGI_OUTDUPL_DESC
-		DWORD			  m_width = 0;
+		uint32_t			  m_width = 0;
 		/// Output height obtained from DXGI_OUTDUPL_DESC
-		DWORD			  m_height = 0;
+		uint32_t			  m_height = 0;
 		/// Running count of no. of accumulated desktop updates
 		int				  m_frameno = 0;
 		/// output file stream to dump timestamps
