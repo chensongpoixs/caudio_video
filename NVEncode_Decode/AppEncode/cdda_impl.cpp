@@ -7,7 +7,7 @@ purpose:		ddaimpl
 ************************************************************************************************/
 #include "cdda_impl.h"
 #include <iomanip>
-
+#include "clog.h"
 #include <winerror.h>
 
 #pragma warning(disable:4996)
@@ -63,6 +63,11 @@ namespace chen {
 			CLEAN_RETURN(hr);
 			return false;
 		}
+
+		DXGI_ADAPTER_DESC dxgi_adapter_desc;
+		pAdapter->GetDesc(&dxgi_adapter_desc);
+		DEBUG_EX_LOG("adapter_desc name = %s", dxgi_adapter_desc.Description);
+
 		/// Once we have the DXGI Adapter, we enumerate the attached display outputs, and select which one we want to capture
 		/// This sample application always captures the primary display output, enumerated at index 0.
 		if (FAILED(hr = pAdapter->EnumOutputs(0, &pOutput)))
@@ -71,6 +76,7 @@ namespace chen {
 			return false;
 		}
 
+		 
 		if (FAILED(hr = pOutput->QueryInterface(__uuidof(IDXGIOutput1), (void**)&pOut1)))
 		{
 			CLEAN_RETURN(hr);
@@ -82,10 +88,16 @@ namespace chen {
 			CLEAN_RETURN(hr);
 			return false;
 		}
+		DXGI_OUTPUT_DESC dxgi_desc;
+		pOut1->GetDesc(&dxgi_desc);
+		DEBUG_EX_LOG("IDXGIOutput1.device_name = %s", dxgi_desc.DeviceName);
 
 		DXGI_OUTDUPL_DESC outDesc;
 		ZeroMemory(&outDesc, sizeof(outDesc));
 		m_dup_ptr->GetDesc(&outDesc);
+
+
+		DEBUG_EX_LOG("[width = %u][height = %u]", outDesc.ModeDesc.Width, outDesc.ModeDesc.Height);
 
 		m_height = outDesc.ModeDesc.Height;
 		m_width = outDesc.ModeDesc.Width;
@@ -101,7 +113,7 @@ namespace chen {
 		int acquired = 0;
 
 
-#define RETURN_ERR(x) {printf(__FUNCTION__": %d : Line %d return 0x%x\n", frameno, __LINE__, x);return x;}
+#define RETURN_ERR(x) {DEBUG_EX_LOG(__FUNCTION__": %d : Line %d return 0x%x\n", m_frameno, __LINE__, x);return x;}
 
 		if (m_resource_ptr)
 		{
@@ -115,15 +127,15 @@ namespace chen {
 		{
 			if (hr == DXGI_ERROR_WAIT_TIMEOUT)
 			{
-				printf(__FUNCTION__": %d : Wait for %d ms timed out\n", m_frameno, wait);
+				WARNING_EX_LOG(__FUNCTION__": %d : Wait for %d ms timed out\n", m_frameno, wait);
 			}
 			if (hr == DXGI_ERROR_INVALID_CALL)
 			{
-				printf(__FUNCTION__": %d : Invalid Call, previous frame not released?\n", m_frameno);
+				WARNING_EX_LOG(__FUNCTION__": %d : Invalid Call, previous frame not released?\n", m_frameno);
 			}
 			if (hr == DXGI_ERROR_ACCESS_LOST)
 			{
-				printf(__FUNCTION__": %d : Access lost, frame needs to be released?\n", m_frameno);
+				WARNING_EX_LOG(__FUNCTION__": %d : Access lost, frame needs to be released?\n", m_frameno);
 			}
 			return false;
 		}
@@ -132,17 +144,19 @@ namespace chen {
 			// No image update, only cursor moved.
 		//	ofs << "frameNo: " << frameno << " | Accumulated: " << frameInfo.AccumulatedFrames << "MouseOnly?" << frameInfo.LastMouseUpdateTime.QuadPart << endl;
 			//RETURN_ERR(DXGI_ERROR_WAIT_TIMEOUT);
+			WARNING_EX_LOG("frameNo: %d | Accumulated: %u| MouseOnly? = %llu", m_frameno, frameInfo.AccumulatedFrames,  frameInfo.LastMouseUpdateTime.QuadPart);
 			return false;
 		}
 
 		if (!m_resource_ptr)
 		{
-			printf(__FUNCTION__": %d : Null output resource. Return error.\n", m_frameno);
+			WARNING_EX_LOG(__FUNCTION__": %d : Null output resource. Return error.\n", m_frameno);
 			return  false;
 		}
 
 		if (FAILED(hr = m_resource_ptr->QueryInterface(__uuidof(ID3D11Texture2D), (void**)ppTex2D)))
 		{
+			WARNING_EX_LOG("m_resource_ptr->QueryInterface");
 			return false ;
 		}
 #define MICROSEC_TIME(x,f)\
@@ -152,7 +166,7 @@ namespace chen {
 		LARGE_INTEGER pts = frameInfo.LastPresentTime;  MICROSEC_TIME(pts, m_qpcFreq);
 		LONGLONG interval = pts.QuadPart - m_lastPTS.QuadPart;
 
-		printf(__FUNCTION__": %d : Accumulated Frames %u PTS Interval %lld PTS %lld\n", m_frameno, frameInfo.AccumulatedFrames, interval * 1000, frameInfo.LastPresentTime.QuadPart);
+		DEBUG_EX_LOG(__FUNCTION__": %d : Accumulated Frames %u PTS Interval %lld PTS %lld\n", m_frameno, frameInfo.AccumulatedFrames, interval * 1000, frameInfo.LastPresentTime.QuadPart);
 		//ofs << "frameNo: " << frameno << " | Accumulated: " << frameInfo.AccumulatedFrames << " | PTS: " << frameInfo.LastPresentTime.QuadPart << " | PTSInterval: " << (interval) * 1000 << endl;
 		m_lastPTS = pts; // store microsec value
 		m_frameno += frameInfo.AccumulatedFrames;

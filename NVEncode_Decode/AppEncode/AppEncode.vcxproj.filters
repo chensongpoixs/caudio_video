@@ -8,6 +8,7 @@
     <ClCompile Include="cdxgi_output_duplication.cpp" />
     <ClCompile Include="cdda_impl.cpp" />
     <ClCompile Include="bmem.c" />
+    <ClCompile Include="clog.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="nvEncodeAPI.h" />
@@ -19,5 +20,6 @@
     <ClInclude Include="cdxgi_output_duplication.h" />
     <ClInclude Include="cdda_impl.h" />
     <ClInclude Include="bmem.h" />
+    <ClInclude Include="clog.h" />
   </ItemGroup>
 </Project>

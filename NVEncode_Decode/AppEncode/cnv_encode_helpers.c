@@ -12,6 +12,7 @@ purpose:		nv_encode
 //#include <util/dstr.h>
 #include "cnv_encode.h"
 #include "cnv_encode_helpers.h"
+#include "clog.h"
 //#include <thread>
 //#include <mutex>
 static void *nvenc_lib = NULL;

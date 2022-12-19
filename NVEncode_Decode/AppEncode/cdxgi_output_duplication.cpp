@@ -11,6 +11,7 @@ purpose:		dxgi _duplication
 #include <d3d11.h>
 #include <stdlib.h>
 #include <iostream>
+#include "clog.h"
 #include "cnv_encode.h"
 //d3d11.lib
 //dxgi.lib
@@ -59,16 +60,16 @@ namespace chen {
 		}
 		m_ctx_ptr->CopyResource(m_new_tex2D, m_pDupTex2D);
 
-		D3D11_MAPPED_SUBRESOURCE map;
+		/*D3D11_MAPPED_SUBRESOURCE map;
 		UINT subResource = 0;
 		HRESULT hr = m_ctx_ptr->Map(m_new_tex2D, 0, D3D11_MAP_READ, 0, &map);
 		static FILE *out_file_ptr = fopen("./test.yuv", "wb+");
 		if (SUCCEEDED(hr))
 		{
-			fwrite(map.pData, 1, 1440 * 2560 * 4, out_file_ptr);
+			fwrite(map.pData, 1, 1920 * 1080 * 4, out_file_ptr);
 			fflush(out_file_ptr);
 			m_ctx_ptr->Unmap(m_new_tex2D, 0);
-		}
+		}*/
 		
 
 		

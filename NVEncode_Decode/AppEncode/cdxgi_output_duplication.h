@@ -4,6 +4,10 @@ created: 		2022-12-16
 author:			chensong
 
 purpose:		dxgi _duplication 
+
+captrue  desktop must use nvidia reader ------>
+
+
 ************************************************************************************************/
 
 #ifndef _C_DXGI_DUPLICATION_H

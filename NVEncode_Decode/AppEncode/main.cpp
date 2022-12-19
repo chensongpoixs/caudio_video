@@ -5,9 +5,11 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "cdxgi_output_duplication.h"
+#include "clog.h"
 int main(int argc, char *argv[])
 {
 
+	LOG_init();
 	//nvenc_info.get_name(NULL);
 	void * p =  nvenc_create();
 	//helloworld();
@@ -27,7 +29,7 @@ int main(int argc, char *argv[])
 		Sleep(1);
 	}
 
-
+	LOG_destroy();
 	return EXIT_SUCCESS;
 }
 

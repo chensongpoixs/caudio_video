@@ -42,12 +42,6 @@ extern const char *nv_error_name(NVENCSTATUS err);
 //extern NV_ENCODE_API_FUNCTION_LIST nv;
 //extern NV_CREATE_INSTANCE_FUNC nv_create_instance;
 
-void LOG(const char* format, ...);
-
-#define WARNING_EX_LOG(format, ...)	LOG("[%s][%s][%d][warn]" format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
-#define DEBUG_EX_LOG(format, ...)   LOG("[%s][%s][%d][debug]" format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#define ERROR_EX_LOG(format, ...)   LOG("[%s][%s][%d][error]" format, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 /**
  * Encoder interface

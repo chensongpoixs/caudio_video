@@ -136,6 +136,7 @@
     <ClCompile Include="cavc.c" />
     <ClCompile Include="cdda_impl.cpp" />
     <ClCompile Include="cdxgi_output_duplication.cpp" />
+    <ClCompile Include="clog.c" />
     <ClCompile Include="cnv_encode.c" />
     <ClCompile Include="cnv_encode_helpers.c" />
     <ClCompile Include="main.cpp" />
@@ -146,6 +147,7 @@
     <ClInclude Include="cdda_impl.h" />
     <ClInclude Include="cdxgi_output_duplication.h" />
     <ClInclude Include="circlebuf.h" />
+    <ClInclude Include="clog.h" />
     <ClInclude Include="cnv_encode.h" />
     <ClInclude Include="cnv_encode_helpers.h" />
     <ClInclude Include="darray.h" />

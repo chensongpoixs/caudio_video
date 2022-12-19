@@ -26,49 +26,11 @@ purpose:		nv_encode
 #include <stdlib.h>
 #include "darray.h"
 #include "cavc.h"
+#include "clog.h"
 /* ========================================================================= */
 
 //static const std::string  g_nv_encode_file_name = "./nv_encode/";// +::time(NULL) + "_nv_encode.log";
-static const char * g_nv_encode_file_name = "./nv_encode/encode.log";
-static FILE* out_file_log_ptr = NULL;
-static inline void SHOW(const char* format, va_list args)
-{
-	if (!out_file_log_ptr)
-	{
-		out_file_log_ptr = fopen(g_nv_encode_file_name, "wb+");;;
-	}
 
-	/*if (!out_file_log_ptr)
-	{
-		return;
-	}*/
-
-	char message[10240] = { 0 };
-
-	int num = _vsprintf_p(message, 1024, format, args);
-	if ( out_file_log_ptr)
-	{
-		fprintf(out_file_log_ptr, "%s\n", message);
-		fflush(out_file_log_ptr);
-	}
-	printf("%s\n", message);
-	fflush(stdout);
-
-}
-void LOG(const char* format, ...)
-{
-	/*if (!out_file_log_ptr)
-	{
-		return;
-	}*/
-
-	va_list args;
-	va_start(args, format);
-
-	SHOW(format, args);
-	va_end(args);
-
-}
 
 
 
@@ -463,8 +425,8 @@ static bool init_encoder(struct nvenc_data *enc/*, chen_data_t *settings*/, bool
 	//video_t *video = chen_encoder_video(enc->encoder);
 	//const struct video_output_info *voi = video_output_get_info(video);
 
-	enc->cx = 2560;
-	enc->cy = 1440;
+	enc->cx = 1920;
+	enc->cy = 1080;
 
 	/* -------------------------- */
 	/* get preset                 */
@@ -1022,7 +984,7 @@ void *data, uint32_t handle, int64_t pts,
 	ID3D11DeviceContext *context = enc->context;
 	ID3D11Texture2D *input_tex;
 	ID3D11Texture2D *output_tex;
-	static ID3D11Texture2D *new_tex;
+	//static ID3D11Texture2D *new_tex;
 	IDXGIKeyedMutex *km;
 	struct nv_texture *nvtex;
 	struct nv_bitstream *bs;
@@ -1059,56 +1021,56 @@ void *data, uint32_t handle, int64_t pts,
 
 	context->lpVtbl->CopyResource(context, (ID3D11Resource *)output_tex, (ID3D11Resource *)input_tex);
 
-	if (!new_tex)
-	{
-		D3D11_TEXTURE2D_DESC bufferTextureDesc = { 0 };
-		bufferTextureDesc.Width = 2560;
-		bufferTextureDesc.Height = 1440;
-		bufferTextureDesc.MipLevels = 1;
-		bufferTextureDesc.ArraySize = 1;
+	//if (!new_tex)
+	//{
+	//	D3D11_TEXTURE2D_DESC bufferTextureDesc = { 0 };
+	//	bufferTextureDesc.Width = 1920;
+	//	bufferTextureDesc.Height = 1080;
+	//	bufferTextureDesc.MipLevels = 1;
+	//	bufferTextureDesc.ArraySize = 1;
 
-		bufferTextureDesc.SampleDesc.Count = 1;
+	//	bufferTextureDesc.SampleDesc.Count = 1;
 
-		bufferTextureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-		bufferTextureDesc.BindFlags = 0;
-		bufferTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-		bufferTextureDesc.MiscFlags = 0;
-		bufferTextureDesc.Usage = D3D11_USAGE_STAGING;
-		device->lpVtbl->CreateTexture2D(device, &bufferTextureDesc, NULL, &new_tex);
-	}
-	else
-	{
-		context->lpVtbl->CopyResource(context, (ID3D11Resource *)new_tex, (ID3D11Resource *)input_tex);
+	//	bufferTextureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+	//	bufferTextureDesc.BindFlags = 0;
+	//	bufferTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	//	bufferTextureDesc.MiscFlags = 0;
+	//	bufferTextureDesc.Usage = D3D11_USAGE_STAGING;
+	//	device->lpVtbl->CreateTexture2D(device, &bufferTextureDesc, NULL, &new_tex);
+	//}
+	//else
+	//{
+	//	context->lpVtbl->CopyResource(context, (ID3D11Resource *)new_tex, (ID3D11Resource *)input_tex);
 
-		D3D11_MAPPED_SUBRESOURCE mapd;
-		UINT subResource = 0;
-		//D3D11CalcSubresource(0, 0, 1);
-		HRESULT hr = context->lpVtbl->Map (context, (ID3D11Resource*)new_tex, subResource, D3D11_MAP_READ, 0, &mapd);
-		if (FAILED(hr))
-		{
-			ERROR_EX_LOG("[%s][%d][ID3D11DeviceContext_Map][ERROR]\n", __FUNCTION__, __LINE__);
+	//	D3D11_MAPPED_SUBRESOURCE mapd;
+	//	UINT subResource = 0;
+	//	//D3D11CalcSubresource(0, 0, 1);
+	//	HRESULT hr = context->lpVtbl->Map (context, (ID3D11Resource*)new_tex, subResource, D3D11_MAP_READ, 0, &mapd);
+	//	if (FAILED(hr))
+	//	{
+	//		ERROR_EX_LOG("[%s][%d][ID3D11DeviceContext_Map][ERROR]\n", __FUNCTION__, __LINE__);
 
-			return;
-		}
-		//size_t rgba_size = data.cx * data.cy * 4;
+	//		return;
+	//	}
+	//	//size_t rgba_size = data.cx * data.cy * 4;
 
-		// filp
-		if (!out_rgba_ptr)
-		{
-			out_rgba_ptr = fopen("rgba.rgba", "wb+");
-		  }
+	//	// filp
+	//	if (!out_rgba_ptr)
+	//	{
+	//		out_rgba_ptr = fopen("rgba.rgba", "wb+");
+	//	  }
 
-		fwrite(mapd.pData, 1, 2560 * 1440 * 4, out_rgba_ptr);
-		fflush(out_rgba_ptr);
-		 
+	//	fwrite(mapd.pData, 1, 1920 * 1080 * 4, out_rgba_ptr);
+	//	fflush(out_rgba_ptr);
+	//	 
 
-		context->lpVtbl->Unmap(context, (ID3D11Resource*)new_tex, subResource);
-		{
-			SYSTEMTIME t1;
-			GetSystemTime(&t1);
-			//DEBUG_EX_LOG("cpu --> mem end  cur = %u", t1.wMilliseconds);
-		}
-	}
+	//	context->lpVtbl->Unmap(context, (ID3D11Resource*)new_tex, subResource);
+	//	{
+	//		SYSTEMTIME t1;
+	//		GetSystemTime(&t1);
+	//		//DEBUG_EX_LOG("cpu --> mem end  cur = %u", t1.wMilliseconds);
+	//	}
+	//}
 	
 
 
