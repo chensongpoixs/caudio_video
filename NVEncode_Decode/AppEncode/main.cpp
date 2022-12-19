@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 	  "high" /*profile*/,
 	  "ll" /*preset*/,
 	  false /*lookahead*/,
-	  2/*bf*/,
+	  5/*bf*/,
 	  60 /*frameRateNum*/,
 	  1 /*frameRateDen*/,
 	  true /*repeat_headers*/,

@@ -379,16 +379,16 @@ static HANDLE get_lib(struct nvenc_data *enc, const char *lib)
 
 typedef HRESULT(WINAPI *CREATEDXGIFACTORY1PROC)(REFIID, void **);
 
-static bool init_d3d11(struct nvenc_data *enc)
+static bool init_d3d11(struct nvenc_data *enc, const struct cencoder_config * settings)
 {
 	HMODULE dxgi = get_lib(enc, "DXGI.dll");
 	HMODULE d3d11 = get_lib(enc, "D3D11.dll");
 	CREATEDXGIFACTORY1PROC create_dxgi;
 	PFN_D3D11_CREATE_DEVICE create_device;
-	IDXGIFactory1 *factory;
-	IDXGIAdapter *adapter;
-	ID3D11Device *device;
-	ID3D11DeviceContext *context;
+	IDXGIFactory1 *factory= NULL;
+	IDXGIAdapter *adapter = NULL;
+	ID3D11Device *device = NULL;
+	ID3D11DeviceContext *context = NULL;
 	HRESULT hr;
 
 	if (!dxgi || !d3d11) 
@@ -413,7 +413,7 @@ static bool init_d3d11(struct nvenc_data *enc)
 	}
 
 	// 选择GPU类型NVIDIA
-	for (int gpuIndex = 0; gpuIndex <= 5; ++gpuIndex)
+	for (int gpuIndex = settings->gpu_index; gpuIndex <= 5; ++gpuIndex)
 	{
 		hr = factory->lpVtbl->EnumAdapters(factory, gpuIndex, &adapter);
 
@@ -466,12 +466,12 @@ static bool init_session(struct nvenc_data *enc)
 	return true;
 }
 
-static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * encoderconfig/*, chen_data_t *settings*//*, bool psycho_aq*/)
+static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * settings/*, chen_data_t *settings*//*, bool psycho_aq*/)
 {
 	//const char *rc = "CBR"; //可控制 chen_data_get_string(settings, "rate_control");
-	uint32_t bitrate = encoderconfig->bitrate;//(int)chen_data_get_int(settings, "bitrate");
-	uint32_t max_bitrate = encoderconfig->max_bitrate;//5000; // (int)chen_data_get_int(settings, "max_bitrate"); // 
-	uint32_t cqp = encoderconfig->cqp;// default 20 // (int)chen_data_get_int(settings, "cqp");
+	uint32_t bitrate = settings->bitrate;//(int)chen_data_get_int(settings, "bitrate");
+	uint32_t max_bitrate = settings->max_bitrate;//5000; // (int)chen_data_get_int(settings, "max_bitrate"); // 
+	uint32_t cqp = settings->cqp;// default 20 // (int)chen_data_get_int(settings, "cqp");
 	//int keyint_sec = 0; // (int)chen_data_get_int(settings, "keyint_sec");
 	//const char *preset = "ll"; // chen_data_get_string(settings, "preset");
 	///*
@@ -488,7 +488,7 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 	//placebo	超慢
 	//*/
 	//const char *profile = "high";// chen_data_get_string(settings, "profile");
-	bool lookahead = encoderconfig->lookahead; // chen_data_get_bool(settings, "lookahead");
+	bool lookahead = settings->lookahead; // chen_data_get_bool(settings, "lookahead");
 	//int bf = 2; // (int)chen_data_get_int(settings, "bf");
 	//bool vbr = false;// astrcmpi(rc, "VBR") == 0;
 	NVENCSTATUS err;
@@ -496,8 +496,8 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 	//video_t *video = chen_encoder_video(enc->encoder);
 	//const struct video_output_info *voi = video_output_get_info(video);
 
-	enc->cx = encoderconfig->width;
-	enc->cy = encoderconfig->height;
+	enc->cx = settings->width;
+	enc->cy = settings->height;
 
 	/* -------------------------- */
 	/* get preset                 */
@@ -507,32 +507,32 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 	bool hp = false;
 	bool ll = false;
 
-	if (astrcmpi(encoderconfig->preset, "hq") == 0) {
+	if (astrcmpi(settings->preset, "hq") == 0) {
 		nv_preset = NV_ENC_PRESET_HQ_GUID;
 
-	} else if (astrcmpi(encoderconfig->preset, "mq") == 0) {
+	} else if (astrcmpi(settings->preset, "mq") == 0) {
 		nv_preset = NV_ENC_PRESET_HQ_GUID;
 		twopass = true;
 
-	} else if (astrcmpi(encoderconfig->preset, "hp") == 0) {
+	} else if (astrcmpi(settings->preset, "hp") == 0) {
 		nv_preset = NV_ENC_PRESET_HP_GUID;
 		hp = true;
 
-	} else if (astrcmpi(encoderconfig->preset, "ll") == 0) {
+	} else if (astrcmpi(settings->preset, "ll") == 0) {
 		nv_preset = NV_ENC_PRESET_LOW_LATENCY_DEFAULT_GUID;
 		ll = true;
 
-	} else if (astrcmpi(encoderconfig->preset, "llhq") == 0) {
+	} else if (astrcmpi(settings->preset, "llhq") == 0) {
 		nv_preset = NV_ENC_PRESET_LOW_LATENCY_HQ_GUID;
 		ll = true;
 
-	} else if (astrcmpi(encoderconfig->preset, "llhp") == 0) {
+	} else if (astrcmpi(settings->preset, "llhp") == 0) {
 		nv_preset = NV_ENC_PRESET_LOW_LATENCY_HP_GUID;
 		hp = true;
 		ll = true;
 	}
 
-	const bool rc_lossless = astrcmpi(encoderconfig->rc, "lossless") == 0;
+	const bool rc_lossless = astrcmpi(settings->rc, "lossless") == 0;
 	bool lossless = rc_lossless;
 	if (rc_lossless) {
 		lossless = nv_get_cap(enc, NV_ENC_CAPS_SUPPORT_LOSSLESS_ENCODE);
@@ -547,8 +547,7 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 	/* -------------------------- */
 	/* get preset default config  */
 
-	NV_ENC_PRESET_CONFIG preset_config = {NV_ENC_PRESET_CONFIG_VER,
-					      {NV_ENC_CONFIG_VER}};
+	NV_ENC_PRESET_CONFIG preset_config = {NV_ENC_PRESET_CONFIG_VER, {NV_ENC_CONFIG_VER}};
 
 	err = nv.nvEncGetEncodePresetConfig(enc->session, NV_ENC_CODEC_H264_GUID, nv_preset, &preset_config);
 	if (nv_failed( err, __FUNCTION__, "nvEncGetEncodePresetConfig")) 
@@ -561,7 +560,7 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 
 	enc->config = preset_config.presetCfg;
 
-	uint32_t gop_size = encoderconfig->gop_size; // (keyint_sec) ? keyint_sec * voi->fps_num / voi->fps_den : 250;
+	uint32_t gop_size = settings->gop_size; // (keyint_sec) ? keyint_sec * voi->fps_num / voi->fps_den : 250;
 
 	NV_ENC_INITIALIZE_PARAMS *params = &enc->params;
 	NV_ENC_CONFIG *config = &enc->config;
@@ -579,18 +578,18 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 	params->encodeHeight = enc->cy;
 	params->darWidth = enc->cx;
 	params->darHeight = enc->cy;
-	params->frameRateNum = encoderconfig->frameRateDen;
-	params->frameRateDen = encoderconfig->frameRateNum;
+	params->frameRateNum = settings->frameRateDen;
+	params->frameRateDen = settings->frameRateNum;
 	params->enableEncodeAsync = 1;
 	params->enablePTD = 1;
 	params->encodeConfig = &enc->config;
 	config->gopLength = gop_size;
-	config->frameIntervalP = 1 + encoderconfig->bf;
+	config->frameIntervalP = 1 + settings->bf;
 	h264_config->idrPeriod = gop_size;
 
 	//bool repeat_headers = false; // chen_data_get_bool(settings, "repeat_headers");
 	//重复SPS/PPS 放到关键帧前面 
-	if (encoderconfig->repeat_headers) 
+	if (settings->repeat_headers)
 	{
 		h264_config->repeatSPSPPS = 1;
 		h264_config->disableSPSPPS = 0;
@@ -625,11 +624,11 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 		break;
 	}
 */
-	enc->bframes = encoderconfig-> bf;
+	enc->bframes = settings-> bf;
 
 	/* lookahead */
 	const bool use_profile_lookahead = config->rcParams.enableLookahead;
-	lookahead = nv_get_cap(enc, NV_ENC_CAPS_SUPPORT_LOOKAHEAD) && (encoderconfig->lookahead || use_profile_lookahead);
+	lookahead = nv_get_cap(enc, NV_ENC_CAPS_SUPPORT_LOOKAHEAD) && (settings->lookahead || use_profile_lookahead);
 	if (lookahead) 
 	{
 		enc->rc_lookahead = use_profile_lookahead
@@ -669,11 +668,11 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 	/* psycho aq */
 	if (nv_get_cap(enc, NV_ENC_CAPS_SUPPORT_TEMPORAL_AQ)) 
 	{
-		config->rcParams.enableAQ = encoderconfig-> psycho_aq;
+		config->rcParams.enableAQ = settings-> psycho_aq;
 		config->rcParams.aqStrength = 8;
-		config->rcParams.enableTemporalAQ = encoderconfig->psycho_aq;
+		config->rcParams.enableTemporalAQ = settings->psycho_aq;
 	} 
-	else if (encoderconfig->psycho_aq)
+	else if (settings->psycho_aq)
 	{
 		warn("Ignoring Psycho Visual Tuning request since GPU is not capable");
 	}
@@ -686,7 +685,7 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 
 	config->rcParams.rateControlMode = twopass ? NV_ENC_PARAMS_RC_VBR_HQ : NV_ENC_PARAMS_RC_VBR;
 
-	if (astrcmpi(encoderconfig->rc, "cqp") == 0 || rc_lossless) 
+	if (astrcmpi(settings->rc, "cqp") == 0 || rc_lossless)
 	{
 		if (lossless) 
 		{
@@ -704,7 +703,7 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 		max_bitrate = 0;
 
 	} 
-	else if (astrcmpi(encoderconfig->rc, "vbr") != 0)
+	else if (astrcmpi(settings->rc, "vbr") != 0)
 	{ /* CBR by default */
 		h264_config->outputBufferingPeriodSEI = 1;
 		config->rcParams.rateControlMode =
@@ -730,11 +729,11 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 	/* -------------------------- */
 	/* profile                    */
 
-	if (astrcmpi(encoderconfig->profile, "main") == 0)
+	if (astrcmpi(settings->profile, "main") == 0)
 	{
 		config->profileGUID = NV_ENC_H264_PROFILE_MAIN_GUID;
 	}
-	else if (astrcmpi(encoderconfig->profile, "baseline") == 0)
+	else if (astrcmpi(settings->profile, "baseline") == 0)
 	{
 		config->profileGUID = NV_ENC_H264_PROFILE_BASELINE_GUID;
 	}
@@ -764,9 +763,9 @@ static bool init_encoder(struct nvenc_data *enc, const struct cencoder_config * 
 	     "\tb-frames:     %d\n"
 	     "\tlookahead:    %s\n"
 	     "\tpsycho_aq:    %s\n",
-		encoderconfig->rc, bitrate, cqp, gop_size, encoderconfig->preset, encoderconfig->profile, enc->cx, enc->cy,
-	     twopass ? "true" : "false", encoderconfig->bf, lookahead ? "true" : "false",
-		encoderconfig->psycho_aq ? "true" : "false");
+		settings->rc, bitrate, cqp, gop_size, settings->preset, settings->profile, enc->cx, enc->cy,
+	     twopass ? "true" : "false", settings->bf, lookahead ? "true" : "false",
+		settings->psycho_aq ? "true" : "false");
 
 	return true;
 }
@@ -803,7 +802,7 @@ static bool init_textures(struct nvenc_data *enc)
 
 ///static void nvenc_destroy(void *data);
 
-static void *nvenc_create_internal(const struct cencoder_config * encoderconfig/*,chen_data_t *settings, chen_encoder_t *encoder,*/ /*bool psycho_aq*/)
+static void *nvenc_create_internal(const struct cencoder_config * settings/*,chen_data_t *settings, chen_encoder_t *encoder,*/ /*bool psycho_aq*/)
 {
 	NV_ENCODE_API_FUNCTION_LIST init = {NV_ENCODE_API_FUNCTION_LIST_VER};
 	struct nvenc_data *enc = bmalloc(sizeof(*enc));
@@ -817,13 +816,13 @@ static void *nvenc_create_internal(const struct cencoder_config * encoderconfig/
 	if (NV_FAILED(nv_create_instance(&init))) {
 		goto fail;
 	}
-	if (!init_d3d11(enc/*, settings*/)) {
+	if (!init_d3d11(enc, settings/*, settings*/)) {
 		goto fail;
 	}
 	if (!init_session(enc)) {
 		goto fail;
 	}
-	if (!init_encoder(enc, encoderconfig/*,settings,*/ /*psycho_aq*/)) {
+	if (!init_encoder(enc, settings/*,settings,*/ /*psycho_aq*/)) {
 		goto fail;
 	}
 	if (!init_bitstreams(enc)) {
@@ -840,7 +839,7 @@ fail:
 	return NULL;
 }
  
-/*static*/ void *nvenc_create(const struct cencoder_config * encoderconfig/*chen_data_t *settings, chen_encoder_t *encoder*/)
+/*static*/ void *nvenc_create(const struct cencoder_config * settings/*chen_data_t *settings, chen_encoder_t *encoder*/)
 {
 	/* this encoder requires shared textures, this cannot be used on a
 	 * gpu other than the one chen is currently running on. */
@@ -855,11 +854,11 @@ fail:
 	
 
 	//const bool psycho_aq = true; // chen_data_get_bool(settings, "psycho_aq");
-	struct nvenc_data *enc = nvenc_create_internal(/*settings, encoder,*/encoderconfig/*,  psycho_aq*/);
-	if ((enc == NULL) && encoderconfig-> psycho_aq) 
+	struct nvenc_data *enc = nvenc_create_internal(/*settings, encoder,*/settings/*,  psycho_aq*/);
+	if ((enc == NULL) && settings-> psycho_aq)
 	{
 		WARNING_EX_LOG( "[jim-nvenc] nvenc_create_internal failed, trying again without Psycho Visual Tuning");
-		enc = nvenc_create_internal(/*settings, encoder,*/ encoderconfig, false);
+		enc = nvenc_create_internal(/*settings, encoder,*/ settings, false);
 	}
 
 	if (enc) {
